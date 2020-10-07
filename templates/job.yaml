@@ -60,12 +60,6 @@ spec:
               value: {{ .Values.backup.elastic.port | quote }}
             - name: REPO
               value: {{ .Values.backup.elastic.repo }}
-            - name: DATEFORMAT
-              value: "%Y-%m-%d-%H-%M"
-{{- if hasKey .Values.restore "filename" }}
-            - name: BACKUPFILE
-              value: {{ .Values.restore.filename }}
-{{- end }}
       restartPolicy: Never
 ---
 {{- end -}}

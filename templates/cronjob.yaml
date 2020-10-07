@@ -62,8 +62,6 @@ spec:
                   value: {{ .Values.backup.elastic.port | quote }}
                 - name: REPO
                   value: {{ .Values.backup.elastic.repo }}
-                - name: DATEFORMAT
-                  value: "%Y-%m-%d-%H-%M"
           restartPolicy: OnFailure
 ---
 {{- end -}}
