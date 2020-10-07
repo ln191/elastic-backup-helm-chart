@@ -1,0 +1,31 @@
+{{- if .Values.backup -}}
+{{- if .Values.restore -}}
+{{- if .Values.restore.enabled -}}
+{{- if hasKey $.Values "networkpolicies" -}}
+{{- if hasKey $.Values.networkpolicies "enabled" -}}
+{{- if $.Values.networkpolicies.enabled -}}
+{{- $from := include "restore.name" . }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $from }}-to-elastic-at-9200
+spec:
+  ingress:
+    - ports:
+        - port: 9200
+          protocol: TCP
+      from:
+        - podSelector:
+            matchLabels:
+              app: {{ $from }}-job
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: elasticsearch
+      app.kubernetes.io/instance: {{ .Release.Namespace }}-{{ .Values.fullnameOverride }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

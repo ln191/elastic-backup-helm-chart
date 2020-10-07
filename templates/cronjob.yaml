@@ -1,0 +1,70 @@
+{{- if .Values.backup -}}
+{{- if .Values.backup.enabled -}}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ include "backup.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ include "backup.name" . }}
+    chart: {{ include "chart.name" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ include "backup.name" . }}-job
+        spec:
+          volumes:
+            - name: nfs-volume
+              nfs:
+                server: {{ .Values.backup.nfs.ip }}
+                path: {{ .Values.backup.nfs.path }}
+            - name: config
+              configMap:
+                name: elastic-backup-config
+                items:
+                - key: "config.yaml"
+                  path: "config.yaml"
+                - key: "backup.yaml"
+                  path: "backup.yaml"
+                - key: "restore.yaml"
+                  path: "restore.yaml"
+          containers:
+            - name: {{ .Chart.Name }}-backup
+              image: "{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}"
+              imagePullPolicy: {{ .Values.backup.image.pullPolicy }}
+              volumeMounts:
+                - name: nfs-volume
+                  mountPath: /var/nfs
+                - name: config
+                  mountPath: "/config"
+                  readOnly: true
+              env:
+                - name: STATE
+                  value: backup
+                - name: ENCRYPTION
+                  value: {{ .Values.backup.encryption.enabled | quote }}
+                - name: PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.backup.encryption.encryptionKeySecret }}
+                      key: encryption-key
+                - name: SEARCH_PATH
+                  value: {{ .Values.backup.encryption.pathToEncrypt }}
+                - name: ELASTIC_HOST
+                  value: {{ .Values.backup.elastic.host }}
+                - name: PORT
+                  value: {{ .Values.backup.elastic.port | quote }}
+                - name: REPO
+                  value: {{ .Values.backup.elastic.repo }}
+                - name: DATEFORMAT
+                  value: "%Y-%m-%d-%H-%M"
+          restartPolicy: OnFailure
+---
+{{- end -}}
+{{- end -}}

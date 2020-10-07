@@ -1,0 +1,73 @@
+{{- if .Values.backup -}}
+{{- if .Values.restore -}}
+{{- if .Values.restore.enabled -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "restore.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ include "restore.name" . }}-job
+    chart: {{ include "chart.name" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ include "restore.name" . }}-job
+    spec:
+      volumes:
+        - name: nfs-volume
+          nfs:
+            server: {{ .Values.backup.nfs.ip }}
+            path: {{ .Values.backup.nfs.path }}
+        - name: config
+          configMap:
+            name: elastic-backup-config
+            items:
+            - key: "config.yaml"
+              path: "config.yaml"
+            - key: "backup.yaml"
+              path: "backup.yaml"
+            - key: "restore.yaml"
+              path: "restore.yaml"
+      containers:
+        - name: {{ .Chart.Name }}-restore
+          image: "{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}"
+          imagePullPolicy: {{ .Values.backup.image.pullPolicy }}
+          volumeMounts:
+            - name: nfs-volume
+              mountPath: /var/nfs
+            - name: config
+              mountPath: "/config"
+              readOnly: true
+          env:
+            - name: STATE
+              value: restore
+            - name: ENCRYPTION
+              value: {{ .Values.backup.encryption.enabled | quote }}
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backup.encryption.encryptionKeySecret }}
+                  key: encryption-key
+            - name: SEARCH_PATH
+              value: {{ .Values.backup.encryption.pathToEncrypt }}
+            - name: ELASTIC_HOST
+              value: {{ .Values.backup.elastic.host }}
+            - name: PORT
+              value: {{ .Values.backup.elastic.port | quote }}
+            - name: REPO
+              value: {{ .Values.backup.elastic.repo }}
+            - name: DATEFORMAT
+              value: "%Y-%m-%d-%H-%M"
+{{- if hasKey .Values.restore "filename" }}
+            - name: BACKUPFILE
+              value: {{ .Values.restore.filename }}
+{{- end }}
+      restartPolicy: Never
+---
+{{- end -}}
+{{- end -}}
+{{- end -}}
